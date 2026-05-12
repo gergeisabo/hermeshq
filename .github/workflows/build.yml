@@ -1,0 +1,68 @@
+name: Build macOS DMG
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.x'
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS app
+        run: flutter build macos --release
+
+      - name: Package as DMG
+        run: |
+          brew install create-dmg
+          mkdir -p dist
+          cp -R build/macos/Build/Products/Release/HermesHQ.app dist/
+          create-dmg \
+            --volname "HermesHQ" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "HermesHQ.app" 180 190 \
+            --hide-extension "HermesHQ.app" \
+            --app-drop-link 420 190 \
+            "dist/HermesHQ.dmg" \
+            "dist/HermesHQ.app"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: HermesHQ-macOS
+          path: dist/HermesHQ.dmg
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.x'
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS (unsigned)
+        run: |
+          flutter build ios --release --no-codesign
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: HermesHQ-iOS
+          path: build/ios/iphoneos/Runner.app
